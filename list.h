@@ -1,4 +1,4 @@
-﻿#ifndef TEMPLATES_LIST_2021_02_11
+#ifndef TEMPLATES_LIST_2021_02_11
 #define TEMPLATES_LIST_2021_02_11
 #include <exception>
 #include <stdexcept>
@@ -13,31 +13,26 @@ namespace lab618
         {
             T data;
             leaf * pnext;
-            leaf(T& _data, leaf * _pnext)
+            leaf(T& _data, leaf * _pnext): data(_data), pnext(_pnext)
             {
-            	data = _data;
-            	pnext = _pnext;
             }
         };
     public:
         class CIterator
         {
         public:
-            CIterator()
-                : m_pCurrent(nullptr), m_pBegin(nullptr)
+            CIterator(): m_pCurrent(0), m_pBegin(0)
             {
             }
 
             CIterator(leaf *p)
             {
-            	m_pBegin = nullptr;
+            	m_pBegin = 0;
             	m_pCurrent = p;
             }
 
-            CIterator(const CIterator &src)
+            CIterator(const CIterator &src): m_pBegin(src.m_pBegin), m_pCurrent(src.m_pCurrent)
             {
-            	this->m_pBegin = src.m_pBegin;
-            	this->m_pCurrent = src.m_pCurrent;
             }
 
             ~CIterator()
@@ -46,139 +41,194 @@ namespace lab618
 
             CIterator& operator = (const CIterator&  src)
             {
-            	this->m_pBegin = src.m_pBegin;
-            	this->m_pCurrent = src.m_pCurrent;
+            	m_pBegin = src.m_pBegin;
+            	m_pCurrent = src.m_pCurrent;
             	return *this;
             }
 
             bool operator != (const CIterator&  it) const
             {
-            	return (this->m_pCurrent != it.m_pCurrent) || (this->m_pBegin != it.m_pBegin);
+            	return (m_pCurrent != it.m_pCurrent) || (m_pBegin != it.m_pBegin);
             }
 
             void operator++()
             {
+            	if (m_pCurrent == 0)
+                {
+            		m_pCurrent = m_pBegin;
+            		m_pBegin = nullptr;
+                    return;
+                }
             	m_pCurrent = m_pCurrent->pnext;
             }
 
             T& getData()
             {
+            	if (m_pCurrent == 0)
+            	{
+            		std::invalid_argument("m_pCurrent == 0");
+            	}
                 return m_pCurrent->data;
             }
 
             T& operator* ()
             {
-                return m_pCurrent->data;
+                return getData();
             }
 
             leaf* getLeaf()
             {
-                return m_pCurrent;
+            	if (m_pCurrent == 0)
+            	{
+            		std::invalid_argument("m_pCurrent == 0");
+            	}
+            	return m_pCurrent;
             }
 
             void setLeaf(leaf* p)
             {
-                m_pBegin = nullptr;
+                m_pBegin = 0;
                 m_pCurrent = p;
             }
 
             void setLeafPreBegin(leaf* p)
             {
                 m_pBegin = p;
-                m_pCurrent = p;
+                m_pCurrent = 0;
             }
 
             bool isValid()
             {
-                return m_pCurrent != nullptr;
+                return m_pCurrent != 0;
             }
 
         private:
-            //храним голову списка, если мы находимся перед началом
+            //храним голову перед началом
             leaf* m_pBegin;
             // храним текущее положение
             leaf* m_pCurrent;
         };
 
     public:
-
-        CSingleLinkedList(): m_pBegin(nullptr), m_pEnd(nullptr)
+        CSingleLinkedList(): m_pBegin(0), m_pEnd(0)
         {
         }
 
         virtual ~CSingleLinkedList()
         {
-        	this->clear();
+        	clear();
         }
 
         void pushBack(T& data)
         {
-    		leaf *current = this->m_pBegin;
-    		while (current->pnext != nullptr)
-    		{
-    			current = current->pnext;
-    		}
-    		current->pnext = new leaf(data, nullptr);
-    		current->pnext->pnext = m_pEnd;
+        	leaf* pNewEnd = new leaf(data, 0);
+        	if (m_pEnd == 0)
+        	{
+        		m_pEnd = pNewEnd;
+        		m_pBegin = m_pEnd;
+        		return;
+        	}
+        	m_pEnd->pnext = pNewEnd;
+        	m_pEnd = pNewEnd;
         }
 
         void pushFront(T& data)
         {
-            leaf* head = new leaf(data, nullptr);
-            head->pnext = m_pBegin->pnext;
-            m_pBegin->pnext = head;
+        	leaf* pNewBegin = new leaf(data, m_pBegin);
+        	pNewBegin->pnext = m_pBegin;
+        	m_pBegin = pNewBegin;
+        	if (m_pEnd == 0)
+        	{
+        		m_pEnd = m_pBegin;
+        	}
         }
 
         T popFront()
         {
-            if (m_pBegin->pnext == m_pEnd)
+            if (m_pBegin == 0)
             {
-                throw std::invalid_argument("Empty list"); //m_pBegin и m_pEnd всегда есть в листе
+                throw std::invalid_argument("Empty list");
+            }
+            leaf* pTmp = m_pBegin;
+
+            m_pBegin = m_pBegin->pnext;
+            if (m_pBegin == 0)
+            {
+            	m_pEnd = 0;
             }
 
-            T data_h = m_pBegin->pnext->data;
-            leaf* head = m_pBegin->pnext;
-            m_pBegin->pnext = head->pnext;
-            delete head;
-            return data_h;
+            T tmp = std::move(pTmp->data);
+            delete pTmp;
+
+            return tmp;
         }
 
         // изменяет состояние итератора. выставляет предыдущую позицию.
         void erase(CIterator& it)
         {
-            leaf* s = m_pBegin;
-            leaf* pRemoveLeaf = it.getLeaf();
-            while (s->pnext != pRemoveLeaf) {
-            	s = s->pnext;
-            }
-            it.setLeaf(s);
-            s->pnext = pRemoveLeaf->pnext;
-            delete pRemoveLeaf;
+        	if (!it.isValid())
+        		return;
+        	leaf* p = it.getLeaf();
+
+        	leaf *pprev = 0;
+        	if (p == m_pBegin)
+        	{
+        		m_pBegin = p->pnext;
+        		it.setLeafPreBegin(m_pBegin);
+        	}
+        	else
+        	{
+        		//находим предыдущий элемент
+        		pprev = m_pBegin;
+        		while (pprev != 0)
+        		{
+        			if (pprev->pnext == p)
+        				break;
+        			pprev = pprev->pnext;
+        		}
+        		it.setLeaf(pprev);
+        	}
+        	if (pprev != 0)
+        	{
+        		pprev->pnext = p->pnext;
+        	}
+        	if (!p->pnext) // находимся в конце
+        	{
+        		m_pEnd = pprev;
+        	}
+        	p->pnext = 0;
+        	delete p;
         }
 
-        //не считает мнимые узлы m_pBegin и m_pEnd
         int getSize()
         {
-            int size = 0;
-            for (CIterator it = this->begin(); it.isValid(); ++it) {
-                ++size;
-            }
-            return size;
+        	size_t size = 0;
+        	for (leaf* pCurrent = m_pBegin; pCurrent != 0;
+        		pCurrent = pCurrent->pnext)
+        	{
+        		++size;
+        	}
+        	return size;
         }
 
         void clear()
         {
-            while (m_pBegin->pnext != m_pEnd)
-            {
-                leaf* pOldhead = m_pBegin->pnext;
-                m_pBegin->pnext = pOldhead->pnext;
-                delete pOldhead;
-            }
+        	leaf* pCurrent = m_pBegin;
+
+        	m_pBegin = 0;
+        	m_pEnd = 0;
+
+        	while (pCurrent != 0)
+        	{
+        		leaf* pNext = pCurrent->pnext;
+        		delete pCurrent;
+        		pCurrent = pNext;
+        	}
         }
 
         CIterator begin()
         {
-            return CIterator(m_pBegin->pnext); //head
+            return CIterator(m_pBegin);
         }
 
     private:
@@ -194,33 +244,28 @@ namespace lab618
         {
             T data;
             leaf * pnext, *pprev;
-            leaf(T& _data, leaf * _pprev, leaf * _pnext)
+            leaf(T& _data, leaf * _pprev, leaf * _pnext):
+            	pnext(_pnext), pprev(_pprev), data(_data)
             {
-            	data = _data;
-            	pnext = _pnext;
-            	pprev = _pprev;
             }
         };
     public:
         class CIterator
         {
         public:
-            CIterator(): m_pCurrent(nullptr), m_pBegin(nullptr), m_pEnd(nullptr)
+            CIterator(): m_pCurrent(0), m_pBegin(0), m_pEnd(0)
             {
             }
 
-            CIterator(leaf *p)
+            CIterator(leaf *p): m_pCurrent(p), m_pBegin(0), m_pEnd(0)
             {
-                m_pBegin = nullptr;
-                m_pCurrent = p;
-                m_pEnd = nullptr;
             }
 
-            CIterator(const CIterator &src)
+            CIterator(const CIterator &src):
+            	m_pCurrent(src.m_pCurrent),
+            	m_pBegin(src.m_pBegin),
+            	m_pEnd(src.m_pEnd)
             {
-            	this->m_pCurrent = src.m_pCurrent;
-            	this->m_pBegin = src.m_pBegin;
-            	this->m_pEnd = src.m_pEnd;
             }
 
             ~CIterator()
@@ -229,77 +274,100 @@ namespace lab618
 
             CIterator& operator = (const CIterator&  src)
             {
-            	this->m_pBegin = src.m_pBegin;
-            	this->m_pCurrent = src.m_pCurrent;
-            	this->m_pEnd = src.m_pEnd;
+            	m_pCurrent = src.m_pCurrent;
+            	m_pBegin = src.m_pBegin;
+            	m_pEnd = src.m_pEnd;
             	return *this;
             }
 
             bool operator != (const CIterator&  it) const
             {
-            	return (this->m_pCurrent != it.m_pCurrent) ||(m_pBegin != it.m_pBegin)|| (m_pEnd != it.m_pEnd);
+            	return (this->m_pCurrent != it.m_pCurrent) ||(this->m_pBegin != it.m_pBegin)|| (this->m_pEnd != it.m_pEnd);
             }
 
             void operator++()
             {
-                if (m_pCurrent == m_pEnd)
+                if (m_pBegin != 0)
                 {
-                	throw std::invalid_argument("cur == end");
+                	m_pCurrent = m_pBegin;
+                	m_pBegin = 0;
                 }
-            	m_pCurrent = m_pCurrent->pnext;
+                else
+                {
+                	if (m_pCurrent != 0)
+                	{
+                		m_pCurrent = m_pCurrent->pnext;
+                	}
+                }
             }
 
             void operator--()
             {
-                if (m_pCurrent == m_pBegin)
+                if (m_pEnd != 0)
                 {
-                	throw std::invalid_argument("cur == begin");
+                	m_pCurrent = m_pEnd;
+                	m_pEnd = 0;
                 }
-            	m_pCurrent = m_pCurrent->pprev;
+                else
+                {
+                	if(m_pCurrent != 0)
+                	{
+                		m_pCurrent = m_pCurrent->pprev;
+                	}
+                }
             }
 
             T& getData()
             {
+            	if (m_pCurrent == 0)
+            	{
+            		std::invalid_argument("m_pCurrent == 0");
+            	}
+
                 return m_pCurrent->data;
             }
 
             T& operator* ()
             {
-                return m_pCurrent->data;
+                return getData();
             }
 
             leaf* getLeaf()
             {
+            	if (m_pCurrent == 0)
+            	{
+            		std::invalid_argument("m_pCurrent == 0");
+            	}
                 return m_pCurrent;
             }
 
             // применяется в erase и eraseAndNext
             void setLeaf(leaf* p)
             {
-                m_pBegin = nullptr;
+                m_pBegin = 0;
                 m_pCurrent = p;
-                m_pEnd = nullptr;
+                m_pEnd = 0;
             }
 
             // применяется в erase и eraseAndNext
             void setLeafPreBegin(leaf* p)
             {
                 m_pBegin = p;
-                m_pCurrent = p;
-                m_pEnd = nullptr;
+                m_pCurrent = 0;
+                m_pEnd = 0;
             }
 
             // применяется в erase и eraseAndNext
             void setLeafPostEnd(leaf* p)
             {
-                m_pBegin = nullptr;
-                m_pCurrent = p;
+                m_pBegin = 0;
+                m_pCurrent = 0;
                 m_pEnd = p;
             }
 
             bool isValid()
             {
-                return m_pCurrent != nullptr;
+                return m_pCurrent != 0;
             }
 
         private:
@@ -313,95 +381,161 @@ namespace lab618
 
     public:
 
-        CDualLinkedList(): m_pBegin(nullptr), m_pEnd(nullptr)
+        CDualLinkedList(): m_pBegin(0), m_pEnd(0)
         {
         };
 
         virtual ~CDualLinkedList()
         {
-        	this->clear();
+        	clear();
         };
 
         void pushBack(T& data)
         {
-        	leaf* s = new leaf(data, nullptr, nullptr);
-        	s->data = data;
-        	s->pprev = m_pEnd->pprev;
-        	s->pnext = m_pEnd;
-        	m_pEnd->pprev->pnext = s;
-        	m_pEnd->pprev = s;
+        	leaf* pNewEnd = new leaf(data, 0, 0);
+
+        	if (!m_pBegin)
+        	{
+                m_pBegin = m_pEnd = pNewEnd;
+                return;
+        	}
+            m_pEnd->pnext = pNewEnd;
+            pNewEnd->pprev = m_pEnd;
+            m_pEnd = pNewEnd;
         }
 
         T popBack()
         {
-            T data = m_pEnd->pprev->data;
-            if (m_pBegin->pnext == m_pEnd)
+            if (!m_pEnd)
             {
-            	throw std::invalid_argument("empty list");
-            } else {
-            	leaf* pOldTail = m_pEnd->pprev;
-            	m_pEnd->pprev = pOldTail->pprev;
-            	pOldTail->pprev->pnext = m_pEnd;
-            	delete pOldTail;
-            	return data;
+                throw std::invalid_argument("Empty list");
             }
+
+            T data = m_pEnd->data;
+
+            if (m_pBegin == m_pEnd)
+            {
+                delete m_pBegin;
+                m_pBegin = m_pEnd = 0;
+                return data;
+            }
+
+            leaf* pOldEnd = m_pEnd;
+            m_pEnd = m_pEnd->pprev;
+            m_pEnd->pnext = nullptr;
+            delete pOldEnd;
+            return data;
         }
 
         void pushFront(T& data)
         {
-            leaf* pNewHead = new leaf(data, nullptr, nullptr);
-            pNewHead->pnext = m_pBegin->pnext;
-            //pNewHead->pprev = m_pBegin;
-            m_pBegin->pnext = pNewHead;
-            m_pBegin->pprev = nullptr;
-            pNewHead->pnext->pprev = pNewHead;
+            leaf* pNewBegin = new leaf(data, 0, 0);
+            if (!m_pBegin)
+            {
+                m_pBegin = m_pEnd = pNewBegin;
+                return;
+            }
+
+            pNewBegin->pnext = m_pBegin;
+            m_pBegin->pprev = pNewBegin;
+            m_pBegin = pNewBegin;
         }
 
         T popFront()
         {
-            if (m_pBegin->pnext == m_pEnd) {
-            	throw std::invalid_argument("empty list");
+            if (!m_pBegin)
+            {
+                throw std::invalid_argument("Empty list");
             }
 
-            T data = m_pBegin->pnext->data;
-            leaf* pOldHead = m_pBegin->pnext;
-            //pOldHead->pnext->pprev = m_pBegin;
-            m_pBegin->pnext = pOldHead->pnext;
-            delete pOldHead;
+            T data = m_pBegin->data;
+
+            if (m_pBegin == m_pEnd)
+            {
+                delete m_pBegin;
+                m_pBegin = m_pEnd = 0;
+                return data;
+            }
+
+            leaf* pOldBegin = m_pBegin;
+            m_pBegin = m_pBegin->pnext;
+            m_pBegin->pprev = nullptr;
+            delete pOldBegin;
             return data;
         }
 
         // изменяет состояние итератора. выставляет предыдущую позицию.
         void erase(CIterator& it)
         {
-            if (m_pBegin->pnext == m_pEnd) {
-            	throw std::invalid_argument("empty list");
+            if (!it.isValid())
+            {
+                throw std::invalid_argument("Can't move left");
+            }
+
+            if (it.getLeaf() == m_pBegin)
+            {
+                leaf* pOldBegin = m_pBegin;
+                if (m_pBegin == m_pEnd)
+                {
+                    m_pBegin = m_pEnd = 0;
+                } else {
+                    m_pBegin = m_pBegin->pnext;
+                    m_pBegin->pprev = nullptr;
+                    it.setLeafPreBegin(m_pBegin);
+                }
+                delete pOldBegin;
+                return;
             }
 
             leaf* pOldLeaf = it.getLeaf();
             it.setLeaf(pOldLeaf->pprev);
             it.getLeaf()->pnext = pOldLeaf->pnext;
-            pOldLeaf->pnext->pprev = it.getLeaf();
+            if (pOldLeaf != m_pEnd)
+            {
+            	pOldLeaf->pnext->pprev = it.getLeaf();
+            }
             delete pOldLeaf;
         }
 
         // изменяет состояние итератора. выставляет следующую позицию.
         void eraseAndNext(CIterator& it)
         {
-            if (m_pBegin->pnext == m_pEnd) {
-            	throw std::invalid_argument("empty list");
+            if (!it.isValid())
+            {
+                throw std::invalid_argument("Can't move right");
             }
+
+            if (it.getLeaf() == m_pEnd)
+            {
+                leaf* pEnd = m_pEnd;
+                if (m_pBegin == m_pEnd)
+                {
+                    m_pBegin = m_pEnd = 0;
+                } else
+                {
+                    m_pEnd = m_pEnd->pprev;
+                    m_pEnd->pnext = nullptr;
+                    it.setLeafPostEnd(m_pEnd);
+                }
+                delete pEnd;
+                pEnd = 0;
+                return;
+            }
+
             leaf* pOldLeaf = it.getLeaf();
             it.setLeaf(pOldLeaf->pnext);
             it.getLeaf()->pprev = pOldLeaf->pprev;
-            pOldLeaf->pprev->pnext = it.getLeaf();
+            if (pOldLeaf != m_pBegin) {
+            	pOldLeaf->pprev->pnext = it.getLeaf();
+            }
             delete pOldLeaf;
         }
 
         int getSize()
         {
             int size = 0;
-            for (CIterator it = this->begin(); it.isValid(); ++it) {
+            for (CIterator it = this->begin(); it.isValid(); ++it)
+            {
                 ++size;
             }
             return size;
@@ -409,16 +543,19 @@ namespace lab618
 
         void clear()
         {
-            while (m_pBegin->pnext != m_pEnd) {
-                leaf* pOldLeaf = m_pBegin->pnext;
-                m_pBegin->pnext = m_pBegin->pnext->pnext;
+            m_pBegin = m_pEnd = 0;
+
+            while (m_pBegin)
+            {
+                leaf* pOldLeaf = m_pBegin;
+                m_pBegin = m_pBegin->pnext;
                 delete pOldLeaf;
             }
         }
 
         CIterator begin()
         {
-            return CIterator(m_pBegin->pnext);
+            return CIterator(m_pBegin);
         }
 
         CIterator end()
@@ -429,5 +566,6 @@ namespace lab618
     private:
         leaf* m_pBegin, *m_pEnd;
     };
+
 };
 #endif //#ifndef TEMPLATES_LIST_2021_02_11
