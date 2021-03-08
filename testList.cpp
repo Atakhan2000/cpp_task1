@@ -1,9 +1,9 @@
-﻿#include "list.h"
+#include "list.h"
+#include <cassert>
 #include <string>
 #include <queue>
 #include <stack>
 #include <deque>
-#include <cassert>
 
 const int ELEMENTS_COUNT = 1000;
 
@@ -197,7 +197,7 @@ void TestListFunction()
     }
     assert(list.getSize() == ELEMENTS_COUNT);
 
-    //------------------------- Erace EraseAndNext -----------------------------
+    //------------------------- Erase EraseAndNext -----------------------------
     it = list.end();
     for (int i = 0; i < ELEMENTS_COUNT; ++i)
     {
@@ -249,4 +249,5 @@ int main()
 {
     TestListFunction();
 }
+
 
